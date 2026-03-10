@@ -4,13 +4,13 @@ Create Gold Layer Views
 - Each View is derived from Silver layer tables, and may involve transformations, calculations, and joins to create the final structure suitable for reporting and analysis.
 */
 
--- Create the dim_customer view in the gold layer
-IF OBJECT_ID('gold.dim_customer', 'V') IS NOT NULL
-	DROP VIEW gold.dim_customer;
+-- Create the dim_customers view in the gold layer
+IF OBJECT_ID('gold.dim_customers', 'V') IS NOT NULL
+	DROP VIEW gold.dim_customers;
 
 GO
 
-CREATE VIEW gold.dim_customer AS
+CREATE VIEW gold.dim_customers AS
 SELECT
 	ROW_NUMBER() OVER(ORDER BY cst_id) AS customer_key, -- Surrogate key
 	ci.cst_id AS customer_id,
@@ -72,7 +72,7 @@ CREATE VIEW gold.fact_sales AS
 SELECT
     sd.sls_ord_num  AS order_number,
     pr.product_key  AS product_key, -- Foreign key to dim_products
-    cu.customer_key AS customer_key, -- Foreign key to dim_customer
+    cu.customer_key AS customer_key, -- Foreign key to dim_customers
     sd.sls_order_dt AS order_date,
     sd.sls_ship_dt  AS shipping_date,
     sd.sls_due_dt   AS due_date,
@@ -82,7 +82,7 @@ SELECT
 FROM silver.crm_sales_details sd
 LEFT JOIN gold.dim_products pr
     ON sd.sls_prd_key = pr.product_number
-LEFT JOIN gold.dim_customer cu
+LEFT JOIN gold.dim_customers cu
     ON sd.sls_cust_id = cu.customer_id;
 
 GO
