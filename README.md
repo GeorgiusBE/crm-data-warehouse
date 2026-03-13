@@ -89,7 +89,6 @@ The Silver layer applies cleansing, standardization, normalization, and transfor
 The Gold layer contains business-ready analytical models designed for reporting and dashboarding.
 
 This layer is modeled using a **star schema**, with a central fact table linked to descriptive dimension tables.
-Unlike the earlier version of the project where the Gold layer was exposed through views, the Gold layer is now implemented as **physical tables**.
 
 **Purpose:**
 - Support analytical queries efficiently
@@ -182,7 +181,7 @@ Data is cleaned and standardized in Silver tables. This includes:
 - Metadata enrichment
 
 ### Step 3: Build and load Gold tables
-The Gold layer is created as physical tables rather than views.
+The Gold layer is created as physical tables.
 This step includes:
 - Creating `gold.dim_customers`, `gold.dim_products`, and `gold.fact_sales`
 - Defining surrogate keys for dimensions
@@ -258,15 +257,3 @@ This warehouse supports analytical queries such as:
 - How many customers fall into VIP, Regular, and New segments?
 - Which products are actively sold in the business?
 - How can customer and product dimensions be combined with fact sales for reporting?
-
----
-
-## Key Takeaway
-
-The main evolution in this project is that the Gold layer has moved from a **view-based reporting layer** to a **materialized star schema implemented with physical tables**.
-This makes the warehouse more realistic for production-style analytics because it allows:
-- explicit fact and dimension design
-- indexed reporting tables
-- constraint-based integrity
-- repeatable loading through a stored procedure
-- clearer performance tuning for analytical workloads
