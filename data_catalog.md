@@ -26,7 +26,7 @@ Gender is derived using a fallback rule:
 | `last_name` | `NVARCHAR(50)` | Customer last name, trimmed during silver layer cleaning. |
 | `country` | `NVARCHAR(50)` | Customer country from ERP location data, with country codes normalised in the silver layer such as `DE` to `Germany`, `US` or `USA` to `United States`, and blanks replaced with `n/a`. |
 | `marital_status` | `NVARCHAR(50)` | Standardised marital status from CRM data, such as `Married`, `Single`, or `Unknown`. |
-| `new_gen` | `NVARCHAR(50)` | Derived gender field. Uses CRM gender when available and not `Unknown`; otherwise falls back to ERP gender; if both are unavailable returns `n/a`. |
+| `gender` | `NVARCHAR(50)` | Derived gender field. Uses CRM gender when available and not `Unknown`; otherwise falls back to ERP gender; if both are unavailable returns `n/a`. |
 | `birthdate` | `DATE` | Customer birth date from ERP customer data, with invalid dates set to `NULL` in the silver layer. |
 | `create_date` | `DATE` | Original customer creation date from CRM source. |
 
