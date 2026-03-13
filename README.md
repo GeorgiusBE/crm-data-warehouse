@@ -8,7 +8,7 @@ The warehouse is structured into three layers:
 
 - **Bronze Layer**: stores raw data ingested directly from source CSV files into SQL Server
 - **Silver Layer**: cleanses, standardizes, and transforms the raw data into a more reliable and analysis-ready format
-- **Gold Layer**: delivers business-ready data modeled into a **star schema** for reporting and analytics
+- **Gold Layer**: delivers business-ready data modeled into a **star schema** using physical dimension and fact tables for reporting and analytics
 
 The project also includes **SQL-based analytical reporting** to generate insights into:
 
@@ -26,6 +26,7 @@ The main goals of this project are to:
 - Develop ETL pipelines to move data across Bronze, Silver, and Gold layers
 - Apply data cleansing and transformation logic to improve data quality
 - Model analytical datasets using fact and dimension tables
+- Materialize the Gold layer into physical tables for easier reporting, indexing, and performance tuning
 - Produce SQL-based reports for business analysis and decision-making
 
 ---
@@ -87,17 +88,25 @@ The Silver layer applies cleansing, standardization, normalization, and transfor
 ### 3. Gold Layer
 The Gold layer contains business-ready analytical models designed for reporting and dashboarding.
 
-This layer is modeled using a **star schema**, with central fact tables linked to descriptive dimension tables.
+This layer is modeled using a **star schema**, with a central fact table linked to descriptive dimension tables.
+Unlike the earlier version of the project where the Gold layer was exposed through views, the Gold layer is now implemented as **physical tables**.
 
 **Purpose:**
 - Support analytical queries efficiently
 - Provide a clean semantic layer for reporting
 - Organize data into reusable business entities
+- Allow indexing and constraint-based optimization on reporting tables
 
-**Gold objects in this project:**
+**Gold tables in this project:**
 - `gold.dim_customers`
 - `gold.dim_products`
 - `gold.fact_sales`
+
+**Key design characteristics:**
+- Surrogate keys are used for dimensions (`customer_key`, `product_key`)
+- The fact table stores foreign keys to the dimensions
+- The Gold tables are loaded from Silver using the stored procedure `gold.load_gold`
+- Primary keys, foreign keys, and supporting indexes are created to improve data integrity and query performance
 
 ---
 
@@ -109,28 +118,39 @@ The Gold layer is designed as a **star schema**:
 
 #### `gold.dim_customers`
 Contains customer-level descriptive attributes, including:
-- Customer ID and number
+- `customer_key` as the surrogate key
+- Customer ID and customer number
 - First name and last name
 - Country
 - Marital status
 - Gender
 - Birthdate
 - Customer creation date
+- Warehouse load timestamp
+
+This table is populated by combining customer information from the Silver CRM and ERP datasets.
+A unique index on `customer_id` supports business-key lookup during fact loading.
 
 #### `gold.dim_products`
 Contains product-level descriptive attributes, including:
-- Product ID and number
+- `product_key` as the surrogate key
+- Product ID and product number
 - Product name
 - Category and subcategory
 - Maintenance type
 - Cost
 - Product line
 - Start date
+- Warehouse load timestamp
+
+Only active products are loaded into this table.
+A unique index on `product_number` supports business-key lookup during fact loading.
 
 ### Fact Table
 
 #### `gold.fact_sales`
 Contains transactional sales measures, including:
+- `sales_key` as the fact table primary key
 - Order number
 - Product key
 - Customer key
@@ -140,6 +160,9 @@ Contains transactional sales measures, including:
 - Sales amount
 - Quantity
 - Price
+- Warehouse load timestamp
+
+This table links sales transactions to the customer and product dimensions through foreign keys.
 
 ---
 
@@ -158,12 +181,42 @@ Data is cleaned and standardized in Silver tables. This includes:
 - Data quality checks
 - Metadata enrichment
 
-### Step 3: Build Gold views for analytics
-Gold views are created from Silver tables by:
-- Joining customer, product, and category data
-- Creating surrogate keys
-- Filtering for active products
-- Structuring the final star schema for reporting
+### Step 3: Build and load Gold tables
+The Gold layer is created as physical tables rather than views.
+This step includes:
+- Creating `gold.dim_customers`, `gold.dim_products`, and `gold.fact_sales`
+- Defining surrogate keys for dimensions
+- Defining primary key and foreign key relationships
+- Creating supporting indexes on business keys
+- Loading the Gold tables from the Silver layer through the stored procedure `gold.load_gold`
+
+### Step 4: Refresh Gold data
+The stored procedure `gold.load_gold` performs a full reload of the Gold layer by:
+- Clearing the fact table
+- Resetting and reloading the dimension tables
+- Looking up dimension surrogate keys from business keys
+- Loading the final fact table with customer and product references
+
+---
+
+## Indexing Strategy
+
+The indexing strategy focuses primarily on the Gold layer, since it is the main analytical layer of the warehouse.
+
+**Current Gold indexing includes:**
+- Primary keys on:
+  - `gold.dim_customers(customer_key)`
+  - `gold.dim_products(product_key)`
+  - `gold.fact_sales(sales_key)`
+- Unique business-key indexes on:
+  - `gold.dim_customers(customer_id)`
+  - `gold.dim_products(product_number)`
+- Foreign key relationships from `gold.fact_sales` to the dimension tables
+
+This approach supports:
+- Surrogate key lookup during ETL
+- Better join performance between fact and dimension tables
+- Easier future tuning for analytical queries
 
 ---
 
@@ -205,3 +258,15 @@ This warehouse supports analytical queries such as:
 - How many customers fall into VIP, Regular, and New segments?
 - Which products are actively sold in the business?
 - How can customer and product dimensions be combined with fact sales for reporting?
+
+---
+
+## Key Takeaway
+
+The main evolution in this project is that the Gold layer has moved from a **view-based reporting layer** to a **materialized star schema implemented with physical tables**.
+This makes the warehouse more realistic for production-style analytics because it allows:
+- explicit fact and dimension design
+- indexed reporting tables
+- constraint-based integrity
+- repeatable loading through a stored procedure
+- clearer performance tuning for analytical workloads
